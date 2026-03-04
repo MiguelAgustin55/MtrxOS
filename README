@@ -1,0 +1,19 @@
+MtrxOS Kernel & System
+======================
+
+Aclaraciones / Inicio Rápido
+----------------------------
+
+MtrxOS está diseñado para CPUs de arquitectura x64 (x86_64) y sistemas UEFI.
+
+MtrxOS es un sistema operativo que hice como "hobby", escrito desde cero
+en Rust. A diferencia de los kernels convencionales, MtrxOS se ejecuta
+directamente sobre el firmware UEFI, tomando el control total del hardware
+desde el arranque para ofrecer una experiencia minimalista pero funcional.
+
+Licencia
+--------
+
+Este software está bajo la licencia MIT. Puedes consultarla en el repositorio.
+
+---------------------------------------------------------------------------

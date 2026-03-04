@@ -24,7 +24,7 @@ pub fn iniciar_lade(sistema: &mut SystemTable<Boot>) {
         sistema.stdout().clear().unwrap();
 
         if ventana_activa == 1 {
-            dibujar_ventana(sistema, max_cols, max_rows, 50, 10, "LADE - LibreArgentina DE", "Bienvenido a LADE.\nPresiona [ESC] para ver el menu.\n\n[ENTER] Cerrar ventana", Color::White, Color::Blue);
+            dibujar_ventana(sistema, max_cols, max_rows, 50, 10, "LADE - LibreAr DE", "Bienvenido a LADE.\nPresiona [ESC] para ver el menu.\n\n[ENTER] Cerrar ventana", Color::White, Color::Blue);
         }
 
         if calc_abierta {
