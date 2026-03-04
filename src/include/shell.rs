@@ -686,7 +686,7 @@ pub fn run(
                         writeln!(sistema.stdout(), "OS: MtrxOS 1.0 (Release)").unwrap();
                         writeln!(sistema.stdout(), "Kernel: UEFI MTRX Kernel").unwrap();
                         writeln!(sistema.stdout(), "Kernel V: 0.0.1-rust").unwrap();
-                        writeln!(sistema.stdout(), "RevT: 2026.02.27-12.40").unwrap();
+                        writeln!(sistema.stdout(), "RevT: 2026").unwrap();
                         writeln!(sistema.stdout(), "Arquitectura: x86_64").unwrap();
                         writeln!(sistema.stdout(), "Tipo: Live OS").unwrap();
                         writeln!(sistema.stdout(), "Shell: MtrxShell").unwrap();
