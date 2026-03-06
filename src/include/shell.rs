@@ -683,7 +683,7 @@ pub fn run(
                         writeln!(sistema.stdout(), "------------------").unwrap();
                         writeln!(sistema.stdout(), "{}@mtrx-os", usuario).unwrap();
                         writeln!(sistema.stdout(), "------------------").unwrap();
-                        writeln!(sistema.stdout(), "OS: MtrxOS (Experimental)").unwrap();
+                        writeln!(sistema.stdout(), "OS: MtrxOS Experimental").unwrap();
                         writeln!(sistema.stdout(), "Kernel: UEFI MTRX Kernel").unwrap();
                         writeln!(sistema.stdout(), "Kernel V: NULL").unwrap();
                         writeln!(sistema.stdout(), "ViD: NULL").unwrap();
