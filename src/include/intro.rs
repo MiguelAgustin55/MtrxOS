@@ -11,16 +11,20 @@ pub fn mostrar_intro(sistema: &mut SystemTable<Boot>) {
     };
 
     let logo = [
-        "             ██             ",
-        "            ████            ",
-        "           ██  ██           ",
-        "          ████████          ",
-        "         ██      ██         ",
-        "        ██        ██        ",
+        "       _       ",
+        "      / \\      ",
+        "     /   \\     ",
+        "    /     \\    ",
+        "   /  /\\   \\   ",
+        "  /  /  \\   \\  ",
+        " /__/    \\___\\  ",
     ];
 
-    let col_inicio = (max_cols / 2).saturating_sub(14);
-    let fila_inicio = (max_rows / 2).saturating_sub(3);
+    let logo_alto = logo.len();
+    let logo_ancho = logo[0].len();
+
+    let col_inicio = (max_cols / 2).saturating_sub(logo_ancho / 2);
+    let fila_inicio = (max_rows / 2).saturating_sub(logo_alto / 2);
 
     let _ = sistema.stdout().set_color(Color::LightBlue, Color::Black);
     for (i, linea) in logo.iter().enumerate() {
