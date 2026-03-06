@@ -683,10 +683,10 @@ pub fn run(
                         writeln!(sistema.stdout(), "------------------").unwrap();
                         writeln!(sistema.stdout(), "{}@mtrx-os", usuario).unwrap();
                         writeln!(sistema.stdout(), "------------------").unwrap();
-                        writeln!(sistema.stdout(), "OS: MtrxOS 1.0 (Experimental)").unwrap();
+                        writeln!(sistema.stdout(), "OS: MtrxOS (Experimental)").unwrap();
                         writeln!(sistema.stdout(), "Kernel: UEFI MTRX Kernel").unwrap();
-                        writeln!(sistema.stdout(), "Kernel V: 0.0.1-rust").unwrap();
-                        writeln!(sistema.stdout(), "ViD: 06032026").unwrap();
+                        writeln!(sistema.stdout(), "Kernel V: NULL").unwrap();
+                        writeln!(sistema.stdout(), "ViD: NULL").unwrap();
                         writeln!(sistema.stdout(), "Arquitectura: x86_64").unwrap();
                         writeln!(sistema.stdout(), "Tipo: Live OS").unwrap();
                         writeln!(sistema.stdout(), "Shell: MtrxShell").unwrap();
