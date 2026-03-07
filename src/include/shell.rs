@@ -23,14 +23,14 @@ pub fn run(
         let mut buffer = [0u8; 128];
         let mut indice = 0;
 
-        loop {        
+        loop {
             if let Ok(Some(evento)) = sistema.stdin().read_key() {
                 match evento {
                     Key::Printable(tecla) => {
                         let valor = u16::from(tecla);
                         if valor == 13 {
                             writeln!(sistema.stdout(), "").unwrap();
-                            break; 
+                            break;
                         } else if valor == 8 {
                             if indice > 0 {
                                 indice -= 1;
@@ -43,6 +43,23 @@ pub fn run(
                                 write!(sistema.stdout(), "{}", valor as u8 as char).unwrap();
                             }
                         }
+                    }
+                    Key::Special(uefi::proto::console::text::ScanCode::FUNCTION_1) => {
+                        let cmd = b"help";
+                        for (i, &byte) in cmd.iter().enumerate() {
+                            buffer[i] = byte;
+                        }
+                        indice = cmd.len();
+                        writeln!(sistema.stdout(), "help").unwrap();
+                        break;
+                    }
+                    Key::Special(uefi::proto::console::text::ScanCode::ESCAPE) => {
+                        writeln!(sistema.stdout(), "\nApagando el sistema...").unwrap();
+                        sistema.runtime_services().reset(
+                            uefi::table::runtime::ResetType::SHUTDOWN,
+                            uefi::Status::SUCCESS,
+                            None,
+                        );
                     }
                     _ => {}
                 }
@@ -80,6 +97,20 @@ pub fn run(
             match comando {
                 "intro" => {
                     crate::intro::mostrar_intro(sistema);
+                }
+                "gltest3" => {
+                    if let Some(mut gl) = crate::mtrx_gl::MtrxGl::init(sistema) {
+                        crate::gltest3::run(sistema, &mut gl);
+                    } else {
+                        writeln!(sistema.stdout(), "Error: No se pudo inicializar MtrxGL.").unwrap();
+                    }
+                }
+                "gltest2" => {
+                    if let Some(mut gl) = crate::mtrx_gl::MtrxGl::init(sistema) {
+                        crate::gltest2::run(sistema, &mut gl);
+                    } else {
+                        writeln!(sistema.stdout(), "Error: No se pudo inicializar MtrxGL.").unwrap();
+                    }
                 }
                 "gltest" => {
                     if let Some(mut gl) = crate::mtrx_gl::MtrxGl::init(sistema) {

@@ -21,5 +21,7 @@ pub mod raycaster;
 pub mod zim;
 pub mod sysconf;
 pub mod popup;
+pub mod gltest2;
+pub mod gltest3;
 
 pub use crate::mtrx_gl::{MtrxGl, Vec2};

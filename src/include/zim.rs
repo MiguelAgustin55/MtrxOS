@@ -1,6 +1,5 @@
 use crate::include::*;
 pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
-
     let (max_cols, max_rows) = if let Some(modo) = sistema.stdout().current_mode().ok().and_then(|m| m) {
         (modo.columns(), modo.rows())
     } else {
@@ -14,7 +13,7 @@ pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
     let _ = sistema.stdout().enable_cursor(true);
 
     loop {
-        sistema.stdout().clear().unwrap();
+        let _ = sistema.stdout().clear();
         let _ = sistema.stdout().set_cursor_position(0, 0);
         let _ = write!(sistema.stdout(), "ZIM IDE | M Lang | F5: RUN | ESC: EXIT | FLECHAS: Mv Cursor\n");
         let _ = write!(sistema.stdout(), "-----------------------------------------------------------\n");
@@ -46,14 +45,14 @@ pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
                     Key::Printable(t) => {
                         if cy < max_rows - 1 {
                             let v = u16::from(t);
-                            
+
                             if v == 8 {
                                 if pos > 0 {
                                     for i in pos..len { buffer[i - 1] = buffer[i]; }
                                     pos -= 1;
                                     len -= 1;
                                 }
-                            } 
+                            }
                             else if v == 13 {
                                 if len < 2048 {
                                     for i in (pos..len).rev() { buffer[i + 1] = buffer[i]; }
@@ -61,7 +60,7 @@ pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
                                     pos += 1;
                                     len += 1;
                                 }
-                            } 
+                            }
                             else if v >= 32 && v <= 126 {
                                 if len < 2048 {
                                     for i in (pos..len).rev() { buffer[i + 1] = buffer[i]; }
@@ -71,12 +70,12 @@ pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
                                 }
                             }
                         }
-                        break; 
+                        break;
                     }
                     Key::Special(s) => {
                         match s {
                             ScanCode::ESCAPE => {
-                                sistema.stdout().clear().unwrap();
+                                let _ = sistema.stdout().clear();
                                 let _ = sistema.stdout().enable_cursor(true);
                                 return;
                             }
@@ -133,7 +132,7 @@ pub fn iniciar_ide(sistema: &mut SystemTable<Boot>) {
 }
 
 fn ejecutar_codigo(sistema: &mut SystemTable<Boot>, codigo: &[u8]) {
-    sistema.stdout().clear().unwrap();
+    let _ = sistema.stdout().clear();
     let mut vars_noms: [[u8; 8]; 20] = [[0; 8]; 20];
     let mut vars_vals: [i64; 20] = [0; 20];
     let mut v_count = 0;
@@ -151,185 +150,221 @@ fn ejecutar_codigo(sistema: &mut SystemTable<Boot>, codigo: &[u8]) {
 
         if l.is_empty() || l.starts_with(':') { continue; }
 
-        let mut partes = l.splitn(2, ' ');
-        let cmd = partes.next().unwrap_or("");
-        let arg = partes.next().unwrap_or("").trim();
+        let mut stmt_buf = [""; 16];
+        let mut stmt_count = 0;
 
-        match cmd {
-            "rand" => {
-                let mut p = arg.splitn(2, ' ');
-                let var_nom = p.next().unwrap_or("");
-                let max = p.next().unwrap_or("100").parse::<i64>().unwrap_or(100);
-                
-                let semillita = unsafe { core::arch::x86_64::_rdtsc() };
-                let n_rand = (semillita % max as u64) as i64;
-            
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == var_nom {
-                        vars_vals[i] = n_rand;
-                        break;
+        if l.starts_with('<') {
+            let mut start = 0;
+            let mut in_bracket = false;
+            let bytes = l.as_bytes();
+            for (i, &b) in bytes.iter().enumerate() {
+                if b == b'<' {
+                    start = i + 1;
+                    in_bracket = true;
+                } else if b == b'>' && in_bracket {
+                    if stmt_count < 16 {
+                        stmt_buf[stmt_count] = core::str::from_utf8(&bytes[start..i]).unwrap_or("").trim();
+                        stmt_count += 1;
                     }
+                    in_bracket = false;
                 }
             }
-            "reset" => {
-                v_count = 0;
-                vars_vals = [0; 20];
-                vars_noms = [[0; 8]; 20];
-                let _ = write!(sistema.stdout(), "Memoria limpia.\n");
-            }
-            "mul" | "div" => {
-                let mut p = arg.splitn(2, ' ');
-                let n = p.next().unwrap_or("");
-                let v_str = p.next().unwrap_or("1");
-                
-                let mut v = v_str.parse::<i64>().unwrap_or(0);
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == v_str {
-                        v = vars_vals[i]; break;
-                    }
-                }
-            
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == n {
-                        if cmd == "mul" { 
-                            vars_vals[i] *= v; 
-                        } else if v != 0 { 
-                            vars_vals[i] /= v; 
-                        } else {
-                            let _ = write!(sistema.stdout(), "Err: Div por 0\n");
+        } else {
+            stmt_buf[0] = l;
+            stmt_count = 1;
+        }
+
+        for idx_stmt in 0..stmt_count {
+            let stmt = stmt_buf[idx_stmt];
+            if stmt.is_empty() { continue; }
+
+            let mut partes = stmt.splitn(2, ' ');
+            let cmd = partes.next().unwrap_or("");
+            let arg = partes.next().unwrap_or("").trim();
+
+            match cmd {
+                "rand" => {
+                    let mut p = arg.splitn(2, ' ');
+                    let var_nom = p.next().unwrap_or("");
+                    let max = p.next().unwrap_or("100").parse::<i64>().unwrap_or(100);
+
+                    let semillita = unsafe { core::arch::x86_64::_rdtsc() };
+                    let n_rand = (semillita % (if max > 0 { max as u64 } else { 1 })) as i64;
+
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == var_nom {
+                            vars_vals[i] = n_rand;
+                            break;
                         }
+                    }
+                }
+                "reset" => {
+                    v_count = 0;
+                    vars_vals = [0; 20];
+                    vars_noms = [[0; 8]; 20];
+                    let _ = write!(sistema.stdout(), "Memoria limpia.\n");
+                }
+                "mul" | "div" => {
+                    let mut p = arg.splitn(2, ' ');
+                    let n = p.next().unwrap_or("");
+                    let v_str = p.next().unwrap_or("1");
+
+                    let mut v = v_str.parse::<i64>().unwrap_or(0);
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == v_str {
+                            v = vars_vals[i]; break;
+                        }
+                    }
+
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == n {
+                            if cmd == "mul" {
+                                vars_vals[i] *= v;
+                            } else if v != 0 {
+                                vars_vals[i] /= v;
+                            } else {
+                                let _ = write!(sistema.stdout(), "Err: Div por 0\n");
+                            }
+                            break;
+                        }
+                    }
+                }
+                "goto" => {
+                    for i in 0..100 {
+                        if lineas[i].trim().starts_with(':') && &lineas[i].trim()[1..] == arg {
+                            pc = i;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                "if" => {
+                    let mut cond = arg.split_whitespace();
+                    let v_name = cond.next().unwrap_or("");
+                    let op = cond.next().unwrap_or("");
+                    let v_target = cond.next().unwrap_or("0").parse::<i64>().unwrap_or(0);
+
+                    let mut actual_val = 0;
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == v_name {
+                            actual_val = vars_vals[i];
+                            break;
+                        }
+                    }
+                    let mut skip = false;
+                    if op == "==" && actual_val != v_target { skip = true; }
+                    if op == ">" && actual_val <= v_target { skip = true; }
+                    if op == "<" && actual_val >= v_target { skip = true; }
+
+                    if skip {
+                        pc += 1;
                         break;
                     }
                 }
-            }
-            "goto" => {
-                for i in 0..100 {
-                    if lineas[i].trim().starts_with(':') && &lineas[i].trim()[1..] == arg {
-                        pc = i;
-                        break;
+                "print" => {
+                    if arg.starts_with('"') && arg.ends_with('"') {
+                        let _ = writeln!(sistema.stdout(), "{}", &arg[1..arg.len()-1]);
+                    } else {
+                        let mut f = false;
+                        for i in 0..v_count {
+                            let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                            if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == arg {
+                                let _ = writeln!(sistema.stdout(), "{}", vars_vals[i]);
+                                f = true; break;
+                            }
+                        }
+                        if !f { let _ = writeln!(sistema.stdout(), "Err: {}", arg); }
                     }
                 }
-            }
-            "if" => {
-                let mut cond = arg.split_whitespace();
-                let v_name = cond.next().unwrap_or("");
-                let op = cond.next().unwrap_or("");
-                let v_target = cond.next().unwrap_or("0").parse::<i64>().unwrap_or(0);
-                
-                let mut actual_val = 0;
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == v_name {
-                        actual_val = vars_vals[i];
-                        break;
+                "let" => {
+                    let mut asig = arg.splitn(2, '=');
+                    let n = asig.next().unwrap_or("").trim();
+                    let v_str = asig.next().unwrap_or("").trim();
+
+                    let mut v = v_str.parse::<i64>().unwrap_or(0);
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == v_str {
+                            v = vars_vals[i]; break;
+                        }
                     }
-                }
-                if op == "==" && actual_val != v_target { pc += 1; }
-                if op == ">" && actual_val <= v_target { pc += 1; }
-                if op == "<" && actual_val >= v_target { pc += 1; }
-            }
-            "print" => {
-                if arg.starts_with('"') && arg.ends_with('"') {
-                    writeln!(sistema.stdout(), "{}", &arg[1..arg.len()-1]).unwrap();
-                } else {
+
                     let mut f = false;
                     for i in 0..v_count {
                         let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == arg {
-                            writeln!(sistema.stdout(), "{}", vars_vals[i]).unwrap();
-                            f = true; break;
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == n {
+                            vars_vals[i] = v; f = true; break;
                         }
                     }
-                    if !f { writeln!(sistema.stdout(), "Err: {}", arg).unwrap(); }
-                }
-            }
-            "let" => {
-                let mut asig = arg.splitn(2, '=');
-                let n = asig.next().unwrap_or("").trim();
-                let v_str = asig.next().unwrap_or("").trim();
-                
-                let mut v = v_str.parse::<i64>().unwrap_or(0);
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == v_str {
-                        v = vars_vals[i]; break;
+                    if !f && v_count < 20 {
+                        let b = n.as_bytes();
+                        vars_noms[v_count][..b.len().min(8)].copy_from_slice(&b[..b.len().min(8)]);
+                        vars_vals[v_count] = v; v_count += 1;
                     }
                 }
+                "input" => {
+                    let _ = write!(sistema.stdout(), "? ");
+                    let mut in_b = [0u8; 16];
+                    let mut in_idx = 0;
+                    loop {
+                        if let Ok(Some(Key::Printable(t))) = sistema.stdin().read_key() {
+                            let c = u16::from(t);
+                            if c == 13 { let _ = writeln!(sistema.stdout()); break; }
+                            if c == 8 && in_idx > 0 { in_idx -= 1; let _ = write!(sistema.stdout(), "\x08 \x08"); }
+                            if c >= 32 && c <= 126 && in_idx < 16 {
+                                in_b[in_idx] = c as u8; in_idx += 1;
+                                let _ = write!(sistema.stdout(), "{}", c as u8 as char);
+                            }
+                        }
+                    }
+                    let val = core::str::from_utf8(&in_b[..in_idx]).unwrap_or("0").parse::<i64>().unwrap_or(0);
+                    let mut f = false;
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == arg {
+                            vars_vals[i] = val; f = true; break;
+                        }
+                    }
+                    if !f && v_count < 20 {
+                        let b = arg.as_bytes();
+                        vars_noms[v_count][..b.len().min(8)].copy_from_slice(&b[..b.len().min(8)]);
+                        vars_vals[v_count] = val; v_count += 1;
+                    }
+                }
+                "add" | "sub" => {
+                    let mut p = arg.splitn(2, ' ');
+                    let n = p.next().unwrap_or("");
+                    let v_str = p.next().unwrap_or("0");
 
-                let mut f = false;
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == n {
-                        vars_vals[i] = v; f = true; break;
+                    let mut v = v_str.parse::<i64>().unwrap_or(0);
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == v_str {
+                            v = vars_vals[i]; break;
+                        }
                     }
-                }
-                if !f && v_count < 20 {
-                    let b = n.as_bytes();
-                    vars_noms[v_count][..b.len().min(8)].copy_from_slice(&b[..b.len().min(8)]);
-                    vars_vals[v_count] = v; v_count += 1;
-                }
-            }
-            "input" => {
-                write!(sistema.stdout(), "? ").unwrap();
-                let mut in_b = [0u8; 16];
-                let mut in_idx = 0;
-                loop {
-                    if let Ok(Some(Key::Printable(t))) = sistema.stdin().read_key() {
-                        let c = u16::from(t);
-                        if c == 13 { writeln!(sistema.stdout()).unwrap(); break; }
-                        if c == 8 && in_idx > 0 { in_idx -= 1; write!(sistema.stdout(), "\x08 \x08").unwrap(); }
-                        if c >= 32 && c <= 126 && in_idx < 16 {
-                            in_b[in_idx] = c as u8; in_idx += 1;
-                            write!(sistema.stdout(), "{}", c as u8 as char).unwrap();
+
+                    for i in 0..v_count {
+                        let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
+                        if core::str::from_utf8(&vars_noms[i][..len]).unwrap_or("") == n {
+                            if cmd == "add" { vars_vals[i] += v; } else { vars_vals[i] -= v; }
+                            break;
                         }
                     }
                 }
-                let val = core::str::from_utf8(&in_b[..in_idx]).unwrap_or("0").parse::<i64>().unwrap_or(0);
-                let mut f = false;
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == arg {
-                        vars_vals[i] = val; f = true; break;
-                    }
+                "delay" => {
+                    let ms = arg.parse::<u64>().unwrap_or(0);
+                    sistema.boot_services().stall((ms * 1000) as usize);
                 }
-                if !f && v_count < 20 {
-                    let b = arg.as_bytes();
-                    vars_noms[v_count][..b.len().min(8)].copy_from_slice(&b[..b.len().min(8)]);
-                    vars_vals[v_count] = val; v_count += 1;
-                }
+                "clear" => { let _ = sistema.stdout().clear(); }
+                _ => {}
             }
-            "add" | "sub" => {
-                let mut p = arg.splitn(2, ' ');
-                let n = p.next().unwrap_or("");
-                let v_str = p.next().unwrap_or("0");
-                
-                let mut v = v_str.parse::<i64>().unwrap_or(0);
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == v_str {
-                        v = vars_vals[i]; break;
-                    }
-                }
-
-                for i in 0..v_count {
-                    let len = vars_noms[i].iter().position(|&x| x == 0).unwrap_or(8);
-                    if core::str::from_utf8(&vars_noms[i][..len]).unwrap() == n {
-                        if cmd == "add" { vars_vals[i] += v; } else { vars_vals[i] -= v; }
-                        break;
-                    }
-                }
-            }
-            "delay" => {
-                let ms = arg.parse::<u64>().unwrap_or(0);
-                sistema.boot_services().stall((ms * 1000) as usize);
-            }
-            "clear" => { sistema.stdout().clear().unwrap(); }
-            _ => {}
         }
     }
-    writeln!(sistema.stdout(), "\n[FIN - PULSA UNA TECLA]").unwrap();
+    let _ = writeln!(sistema.stdout(), "\n[FIN - PULSA UNA TECLA]");
     loop { if let Ok(Some(_)) = sistema.stdin().read_key() { break; } }
 }
