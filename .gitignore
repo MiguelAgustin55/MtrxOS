@@ -1,5 +1,0 @@
-*.iso
-target/
-iso_root/EFI/
-*.bak
-*.lock
